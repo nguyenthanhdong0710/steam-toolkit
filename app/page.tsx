@@ -1,3 +1,4 @@
+import SteamAccountButton from './SteamAccountButton';
 import SteamButton from './SteamButton';
 import SteamRefreshRequestButton from './SteamRefreshRequestButton';
 
@@ -12,6 +13,7 @@ export default function Home() {
           <div className='flex gap-4'>
             <SteamButton />
             <SteamRefreshRequestButton />
+            <SteamAccountButton />
           </div>
         </div>
       </main>
