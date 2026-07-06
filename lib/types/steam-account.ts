@@ -61,6 +61,17 @@ export interface ProfileItems {
   steam_deck_startup_movies: ProfileItem[];
 }
 
+// Override: @types/steam-user mistypes getEquippedProfileItems's return as the
+// array-shaped ProfileItems; the real response has one optional item per category.
+export interface EquippedProfileItems {
+  profile_background: ProfileItem | null;
+  mini_profile_background: ProfileItem | null;
+  avatar_frame: ProfileItem | null;
+  animated_avatar: ProfileItem | null;
+  profile_modifier: ProfileItem | null;
+  steam_deck_keyboard_skin: ProfileItem | null;
+}
+
 export interface AccountFriend {
   steamID: string;
   personaName: string | null;
@@ -96,4 +107,5 @@ export interface AccountSummary {
   friends?: AccountFriend[] | null;
   groups?: Record<string, number> | null;
   ownedProfileItems?: ProfileItems | null;
+  equippedProfileItems?: EquippedProfileItems | null;
 }

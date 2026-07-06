@@ -100,6 +100,8 @@ export default function ProfileThemePicker() {
   const mutation = useSetProfileModifier();
 
   const themes = account?.ownedProfileItems?.profile_modifiers || defaultThemes;
+  const equippedThemeId =
+    account?.equippedProfileItems?.profile_modifier?.communityitemid ?? null;
 
   return (
     <section className="w-full rounded-none border border-zinc-200 bg-white p-6 text-left shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
@@ -140,7 +142,9 @@ export default function ProfileThemePicker() {
       {themes.length > 0 ? (
         <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
           {themes.map((theme) => {
-            const isEquipped = Boolean(theme.equipped_flags);
+            const isEquipped =
+              equippedThemeId !== null &&
+              theme.communityitemid === equippedThemeId;
             const isPending =
               mutation.isPending &&
               mutation.variables?.communityItemId === theme.communityitemid;

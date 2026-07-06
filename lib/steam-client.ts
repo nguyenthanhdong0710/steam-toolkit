@@ -229,6 +229,24 @@ export async function getAccountSummary(options?: {
     } catch {
       account.ownedProfileItems = null;
     }
+
+    try {
+      if (!account.steamID) {
+        throw new Error("steamID unavailable");
+      }
+      const equipped = await withTimeout(
+        client.getEquippedProfileItems(account.steamID, {
+          language: "english",
+        }),
+      );
+      // Override: the installed steam-user typings mistype this as array-shaped
+      // ProfileItems (see lib/types/steam-account.ts).
+      account.equippedProfileItems =
+        (equipped as unknown as AccountSummary["equippedProfileItems"]) ||
+        null;
+    } catch {
+      account.equippedProfileItems = null;
+    }
   }
 
   return account;
