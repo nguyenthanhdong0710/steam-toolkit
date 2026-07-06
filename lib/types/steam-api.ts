@@ -14,19 +14,6 @@ export type AccountErrorResponse = ApiErrorResponse<{
   needsRefreshToken?: boolean;
 }>;
 
-// POST /api/steam/auth-ticket
-export interface AuthTicketRequestBody {
-  appId?: number;
-  twoFactorCode?: string;
-}
-export interface AuthTicketResponse {
-  appId: number;
-  sessionTicket: string;
-}
-export type AuthTicketErrorResponse = ApiErrorResponse<{
-  needsTwoFactorCode?: boolean;
-}>;
-
 // POST /api/steam/refresh-token
 export interface RefreshTokenRequestBody {
   twoFactorCode?: string;
@@ -36,4 +23,16 @@ export interface RefreshTokenResponse {
 }
 export type RefreshTokenErrorResponse = ApiErrorResponse<{
   needsTwoFactorCode?: boolean;
+}>;
+
+// POST /api/steam/profile-modifier
+export interface EquipProfileModifierRequestBody {
+  appid: number;
+  communityItemId: string;
+}
+export interface EquipProfileModifierResponse {
+  communityItemId: string;
+}
+export type EquipProfileModifierErrorResponse = ApiErrorResponse<{
+  needsRefreshToken?: boolean;
 }>;

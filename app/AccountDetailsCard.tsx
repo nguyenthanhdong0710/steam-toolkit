@@ -136,7 +136,7 @@ export default function AccountDetailsCard() {
               value={formatValue(account.groupsCount)}
             />
             <DetailItem label="Wallet" value={formatValue(account.wallet)} />
-            <DetailItem label="Wallet" value={formatValue(account)} />
+            <DetailItem label="Raw JSON" value={formatValue(account)} />
           </dl>
         ) : null}
       </section>

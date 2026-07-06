@@ -1,5 +1,5 @@
 import AccountDetailsCard from "./AccountDetailsCard";
-import SteamButton from "./SteamButton";
+import ProfileThemePicker from "./ProfileThemePicker";
 import SteamRefreshRequestButton from "./SteamRefreshRequestButton";
 
 export default function Home() {
@@ -11,10 +11,10 @@ export default function Home() {
             Hello, welcome to Steam Toolkit
           </h1>
           <div className="flex gap-4">
-            <SteamButton />
             <SteamRefreshRequestButton />
           </div>
           <AccountDetailsCard />
+          <ProfileThemePicker />
         </div>
       </main>
     </div>

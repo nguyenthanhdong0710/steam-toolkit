@@ -1,5 +1,6 @@
 import SteamUser from "steam-user";
 
+import { activateProfileModifierItem } from "@/lib/steam-quest-service";
 import type { AccountSummary } from "@/lib/types/steam-account";
 
 let steamClient: SteamUser | null = null;
@@ -310,11 +311,12 @@ export async function getSteamClient() {
   return loginSteamClient(getRefreshTokenLoginDetails());
 }
 
-export async function createSteamAuthSessionTicket(appId: number) {
+export async function setSteamProfileModifier(
+  appid: number,
+  communityItemId: string,
+): Promise<void> {
   const client = await getSteamClient();
-  const { sessionTicket } = await client.createAuthSessionTicket(appId);
-
-  return sessionTicket.toString("hex");
+  await activateProfileModifierItem(client, appid, communityItemId);
 }
 
 export async function createSteamRefreshToken(twoFactorCode?: string) {
