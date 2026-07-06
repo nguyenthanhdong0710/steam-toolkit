@@ -36,3 +36,12 @@ export interface EquipProfileModifierResponse {
 export type EquipProfileModifierErrorResponse = ApiErrorResponse<{
   needsRefreshToken?: boolean;
 }>;
+
+// GET /api/cron/profile-theme
+export interface CronProfileThemeResponse {
+  theme: "day" | "night";
+  communityItemId: string;
+}
+export type CronProfileThemeErrorResponse = ApiErrorResponse<{
+  needsRefreshToken?: boolean;
+}>;

@@ -13,6 +13,8 @@ There is no test suite configured in this project.
 
 ## Environment setup
 
+**Never read, write, or otherwise access `.env.local`.** It holds live secrets (Steam refresh token/password, API keys) for the user's real account. Don't Read/Edit/cat/grep it, don't curl endpoints that would exercise it, and don't ask the user to paste its contents. If a task needs a value from it (e.g. testing a new env var), tell the user what to add and let them do it themselves.
+
 Steam login requires env vars in `.env.local` (copy from `.env.example`). One of:
 
 - `STEAM_REFRESH_TOKEN` — recommended long-lived login
