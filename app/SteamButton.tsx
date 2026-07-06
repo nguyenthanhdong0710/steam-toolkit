@@ -1,66 +1,28 @@
-"use client"
+"use client";
 
-import { useState } from "react";
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
+import { useSteamAction } from "@/lib/hooks/use-steam-action";
+import type {
+  AuthTicketRequestBody,
+  AuthTicketResponse,
+} from "@/lib/types/steam-api";
 
 export default function SteamButton() {
-  const [status, setStatus] = useState<string | null>(null);
+  const mutation = useSteamAction<AuthTicketRequestBody, AuthTicketResponse>(
+    "/api/steam/auth-ticket",
+  );
 
-  const requestSteamTicket = async (twoFactorCode?: string) => {
-    const response = await fetch("/api/steam/auth-ticket", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ appId: 480, ...(twoFactorCode ? { twoFactorCode } : {}) }),
-    });
-
-    const payload = await response.json();
-
-    if (!response.ok) {
-      const error = new Error(payload.error ?? "Failed to create Steam auth ticket.");
-      (error as Error & { needsTwoFactorCode?: boolean }).needsTwoFactorCode = Boolean(
-        payload.needsTwoFactorCode,
-      );
-      throw error;
-    }
-
-    return payload;
+  const handleSteamClick = () => {
+    mutation.mutate({ appId: 480 });
   };
 
-  const handleSteamClick = async () => {
-    setStatus("Requesting Steam ticket...");
+  const label = mutation.isPending
+    ? "Requesting Steam ticket..."
+    : mutation.isError
+      ? mutation.error.message
+      : mutation.isSuccess
+        ? "Steam ticket created."
+        : "Steam";
 
-    try {
-      let payload;
-
-      try {
-        payload = await requestSteamTicket();
-      } catch (error) {
-        if (error instanceof Error && (error as Error & { needsTwoFactorCode?: boolean }).needsTwoFactorCode) {
-          const twoFactorCode = window.prompt("Enter your Steam Guard code");
-
-          if (!twoFactorCode) {
-            setStatus("Steam Guard code required.");
-            return;
-          }
-
-          payload = await requestSteamTicket(twoFactorCode.trim());
-        } else {
-          throw error;
-        }
-      }
-
-      setStatus("Steam ticket created.");
-      console.log(payload);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Steam request failed.");
-    }
-  };
-
-  return <Button
-    onClick={handleSteamClick}
-  >
-    {status ?? "Steam"}
-  </Button>
+  return <Button onClick={handleSteamClick}>{label}</Button>;
 }

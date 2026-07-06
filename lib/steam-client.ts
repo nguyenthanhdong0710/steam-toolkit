@@ -1,58 +1,43 @@
 import SteamUser from "steam-user";
 
+import type { AccountSummary } from "@/lib/types/steam-account";
+
 let steamClient: SteamUser | null = null;
 
 function withTimeout<T>(promise: Promise<T>, ms = 5000) {
   return new Promise<T>((resolve, reject) => {
     const t = setTimeout(() => reject(new Error("timeout")), ms);
-    promise.then((v) => {
-      clearTimeout(t);
-      resolve(v);
-    }, (e) => {
-      clearTimeout(t);
-      reject(e);
-    });
+    promise.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      },
+    );
   });
 }
 
+interface PersonaData {
+  player_name?: string;
+  persona_name?: string;
+  name?: string;
+  persona_state?: number;
+  player_state?: number;
+  avatar?: { small?: string; medium?: string; full?: string };
+  game?: { appid?: number; [key: string]: unknown };
+}
+
 function promisifyPersonas(client: SteamUser, ids: Array<string>) {
-  return withTimeout(new Promise<any>((resolve) => {
-    (client as any).getPersonas(ids, (personas: any) => resolve(personas));
-  }));
-}
-
-function promisifyGetTradeURL(client: SteamUser) {
-  return withTimeout(new Promise<string>((resolve, reject) => {
-    try {
-      (client as any).getTradeURL((err: any, resp: any) => {
-        if (err) return reject(err);
-        if (!resp) return resolve('');
-        if (typeof resp === 'string') return resolve(resp);
-        if (resp.url) return resolve(resp.url);
-        return resolve(String(resp));
-      });
-    } catch (e) {
-      reject(e);
-    }
-  }));
-}
-
-function promisifyGetOwnedApps(client: SteamUser) {
-  return withTimeout(new Promise<number[]>((resolve) => {
-    (client as any).getOwnedApps((apps: number[]) => resolve(apps));
-  }));
-}
-
-function promisifyGetCredentialChangeTimes(client: SteamUser) {
-  return withTimeout(new Promise<any>((resolve) => {
-    (client as any).getCredentialChangeTimes((times: any) => resolve(times));
-  }));
-}
-
-function promisifyGetSteamGuardDetails(client: SteamUser) {
-  return withTimeout(new Promise<any>((resolve) => {
-    (client as any).getSteamGuardDetails((details: any) => resolve(details));
-  }));
+  return withTimeout(
+    new Promise<Record<string, PersonaData>>((resolve, reject) => {
+      client.getPersonas(ids, (err, personas) =>
+        err ? reject(err) : resolve(personas),
+      );
+    }),
+  );
 }
 
 /**
@@ -64,84 +49,87 @@ export async function getAccountSummary(options?: {
   includeFriendsList?: boolean;
   includeGroupsList?: boolean;
   includeInventory?: boolean;
-  includeVacDetails?: boolean;
-}) {
+}): Promise<AccountSummary> {
   const opts = {
     includeSensitive: false,
     includeOwnedApps: false,
     includeFriendsList: false,
     includeGroupsList: false,
     includeInventory: false,
-    includeVacDetails: false,
     ...(options || {}),
   };
 
   const client = await getSteamClient();
 
-  const account: any = {};
+  const account = {} as AccountSummary;
 
   try {
-    const sidAny: any = client.steamID;
-    account.steamID = sidAny && typeof sidAny.getSteamID64 === 'function'
-      ? sidAny.getSteamID64()
-      : sidAny ? sidAny.toString() : null;
-  } catch (e) {
+    account.steamID = client.steamID ? client.steamID.getSteamID64() : null;
+  } catch {
     account.steamID = null;
   }
 
   try {
     if (account.steamID) {
       const personas = await promisifyPersonas(client, [account.steamID]);
-      const p = personas && personas[account.steamID] ? personas[account.steamID] : null;
+      const p =
+        personas && personas[account.steamID]
+          ? personas[account.steamID]
+          : null;
       if (p) {
         account.personaName = p.player_name || p.persona_name || p.name;
         account.personaState = p.persona_state || p.player_state || null;
         account.avatar = {
-          small: p.avatar && p.avatar.small || null,
-          medium: p.avatar && p.avatar.medium || null,
-          full: p.avatar && p.avatar.full || null,
+          small: (p.avatar && p.avatar.small) || null,
+          medium: (p.avatar && p.avatar.medium) || null,
+          full: (p.avatar && p.avatar.full) || null,
         };
         account.currentGame = p.game && p.game.appid ? p.game : null;
       }
     }
-  } catch (e) {
+  } catch {
     // ignore persona failures
   }
 
   // accountInfo, wallet, limitations, vac, licenses available on client object
   try {
     account.accountInfo = client.accountInfo || null;
-  } catch (e) {
+  } catch {
     account.accountInfo = null;
   }
 
   try {
     account.limitations = client.limitations || null;
-  } catch (e) {
+  } catch {
     account.limitations = null;
   }
 
   try {
-    account.vac = client.vac || null;
-  } catch (e) {
+    // Override: the installed steam-user typings omit `ranges`, which is present at runtime.
+    account.vac = (client.vac as AccountSummary["vac"]) || null;
+  } catch {
     account.vac = null;
   }
 
   try {
     account.licensesCount = client.licenses ? client.licenses.length : 0;
-  } catch (e) {
+  } catch {
     account.licensesCount = 0;
   }
 
   try {
-    account.friendsCount = client.myFriends ? Object.keys(client.myFriends).length : 0;
-  } catch (e) {
+    account.friendsCount = client.myFriends
+      ? Object.keys(client.myFriends).length
+      : 0;
+  } catch {
     account.friendsCount = 0;
   }
 
   try {
-    account.groupsCount = client.myGroups ? Object.keys(client.myGroups).length : 0;
-  } catch (e) {
+    account.groupsCount = client.myGroups
+      ? Object.keys(client.myGroups).length
+      : 0;
+  } catch {
     account.groupsCount = 0;
   }
 
@@ -149,44 +137,51 @@ export async function getAccountSummary(options?: {
   if (opts.includeSensitive) {
     try {
       account.emailInfo = client.emailInfo || null;
-    } catch (e) {
+    } catch {
       account.emailInfo = null;
     }
 
     try {
       account.wallet = client.wallet || null;
-    } catch (e) {
+    } catch {
       account.wallet = null;
     }
 
     try {
-      account.tradeURL = await promisifyGetTradeURL(client);
-    } catch (e) {
+      const tradeURL = await withTimeout(client.getTradeURL());
+      account.tradeURL = tradeURL?.url ?? null;
+    } catch {
       account.tradeURL = null;
     }
   }
 
   // credential change times
   try {
-    account.credentialChangeTimes = await promisifyGetCredentialChangeTimes(client);
-  } catch (e) {
+    account.credentialChangeTimes = await withTimeout(
+      client.getCredentialChangeTimes(),
+    );
+  } catch {
     account.credentialChangeTimes = null;
   }
 
   // steam guard details
   try {
-    account.steamGuardDetails = await promisifyGetSteamGuardDetails(client);
-  } catch (e) {
+    account.steamGuardDetails = await withTimeout(
+      client.getSteamGuardDetails(),
+    );
+  } catch {
     account.steamGuardDetails = null;
   }
 
   // optionally include heavy lists
   if (opts.includeOwnedApps) {
     try {
-      const apps = await promisifyGetOwnedApps(client);
+      // TODO: enable via `new SteamUser({ enablePicsCache: true })` to stop this
+      // throwing "PICS cache is not enabled." — out of scope for this refactor.
+      const apps = client.getOwnedApps();
       account.ownedApps = Array.isArray(apps) ? apps : [];
       account.ownedAppsCount = account.ownedApps.length;
-    } catch (e) {
+    } catch {
       account.ownedApps = null;
       account.ownedAppsCount = account.ownedAppsCount || 0;
     }
@@ -194,12 +189,20 @@ export async function getAccountSummary(options?: {
 
   if (opts.includeFriendsList) {
     try {
-      const friends: any = client.myFriends || {};
-      const keys = Object.keys(friends || {});
+      const friends = client.myFriends || {};
+      const keys = Object.keys(friends);
       // build brief persona list for friends
       const friendPersonas = await promisifyPersonas(client, keys);
-      account.friends = keys.map((k) => ({ steamID: k, personaName: friendPersonas && friendPersonas[k] ? (friendPersonas[k].player_name || friendPersonas[k].persona_name) : null }));
-    } catch (e) {
+      account.friends = keys.map((k) => ({
+        steamID: k,
+        personaName:
+          friendPersonas && friendPersonas[k]
+            ? friendPersonas[k].player_name ||
+              friendPersonas[k].persona_name ||
+              null
+            : null,
+      }));
+    } catch {
       account.friends = null;
     }
   }
@@ -207,7 +210,7 @@ export async function getAccountSummary(options?: {
   if (opts.includeGroupsList) {
     try {
       account.groups = client.myGroups || null;
-    } catch (e) {
+    } catch {
       account.groups = null;
     }
   }
@@ -215,10 +218,14 @@ export async function getAccountSummary(options?: {
   // inventory/profile items (lightweight summary)
   if (opts.includeInventory) {
     try {
-      // @ts-expect-error dynamic
-      const items = await withTimeout(new Promise<any>((resolve) => client.getOwnedProfileItems((res: any) => resolve(res))));
-      account.ownedProfileItems = items || null;
-    } catch (e) {
+      const items = await withTimeout(
+        client.getOwnedProfileItems({ language: "english" }),
+      );
+      // Override: the installed steam-user typings omit several profile-item
+      // categories and fields that are present at runtime (see lib/types/steam-account.ts).
+      account.ownedProfileItems =
+        (items as unknown as AccountSummary["ownedProfileItems"]) || null;
+    } catch {
       account.ownedProfileItems = null;
     }
   }
@@ -230,13 +237,15 @@ function getRefreshTokenLoginDetails(): SteamUser.LogOnDetailsRefresh {
   const refreshToken = process.env.STEAM_REFRESH_TOKEN;
 
   if (!refreshToken) {
-    throw new Error("Missing STEAM_REFRESH_TOKEN environment variable.");
+    throw new Error("STEAM_REFRESH_TOKEN_MISSING");
   }
 
   return { refreshToken };
 }
 
-function getPasswordLoginDetails(twoFactorCode?: string): SteamUser.LogOnDetailsNamePass {
+function getPasswordLoginDetails(
+  twoFactorCode?: string,
+): SteamUser.LogOnDetailsNamePass {
   const accountName = process.env.STEAM_ACCOUNT_NAME;
   const password = process.env.STEAM_PASSWORD;
 
@@ -261,7 +270,9 @@ function loginSteamClient(details: SteamUser.LogOnDetailsRefresh) {
       client.removeListener("loggedOn", handleLoggedOn);
       client.removeListener("error", handleError);
       client.removeListener("steamGuard", handleSteamGuard);
-      reject(error);
+      // This login path is only ever used with a refresh token, so any
+      // non-steamGuard failure here means the refresh token itself is bad.
+      reject(new Error("STEAM_REFRESH_TOKEN_INVALID", { cause: error }));
     };
 
     const handleLoggedOn = () => {
@@ -271,7 +282,11 @@ function loginSteamClient(details: SteamUser.LogOnDetailsRefresh) {
       resolve(client);
     };
 
-    const handleSteamGuard = (domain: string | null, callback: (code: string) => void, lastCodeWrong: boolean) => {
+    const handleSteamGuard = (
+      domain: string | null,
+      callback: (code: string) => void,
+      lastCodeWrong: boolean,
+    ) => {
       void domain;
       void callback;
       void lastCodeWrong;
@@ -326,7 +341,11 @@ export async function createSteamRefreshToken(twoFactorCode?: string) {
       resolve(refreshToken);
     };
 
-    const handleSteamGuard = (domain: string | null, callback: (code: string) => void, lastCodeWrong: boolean) => {
+    const handleSteamGuard = (
+      domain: string | null,
+      callback: (code: string) => void,
+      lastCodeWrong: boolean,
+    ) => {
       void domain;
       void lastCodeWrong;
       if (!twoFactorCode) {

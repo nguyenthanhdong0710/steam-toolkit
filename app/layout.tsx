@@ -1,18 +1,15 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
+import { Space_Grotesk } from "next/font/google";
+
 import "./globals.css";
+
 import { cn } from "@/lib/utils";
 
-const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], variable: '--font-sans' });
+import { Providers } from "./providers";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  variable: "--font-sans",
 });
 
 export const metadata: Metadata = {
@@ -28,10 +25,18 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={cn("dark", "h-full", "antialiased", geistSans.variable, geistMono.variable, "font-sans", spaceGrotesk.variable)}
+      className={cn(
+        "dark",
+        "h-full",
+        "antialiased",
+        "font-sans",
+        spaceGrotesk.variable,
+      )}
     >
       <meta name="apple-mobile-web-app-title" content="Steam Toolkit" />
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

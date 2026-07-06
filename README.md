@@ -5,8 +5,19 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 Copy `.env.example` to `.env.local` and fill in one of these login options:
 
 - `STEAM_REFRESH_TOKEN` for the recommended long-lived login
-- `STEAM_ACCOUNT_NAME` and `STEAM_PASSWORD` for password-based login
-- `STEAM_2FA_CODE` only if your account needs a Steam Guard code during password login
+- `STEAM_ACCOUNT_NAME` and `STEAM_PASSWORD` for one-time refresh-token bootstrap
+- `STEAM_WEBAPI_KEY` if you want optional Web API calls like `GetPlayerBans`
+
+## Steam Account Details
+
+The home page now auto-loads `AccountDetailsCard`, which calls `GET /api/steam/account` on mount and shows a Steam Guard-style popup if the refresh token is no longer valid.
+
+Use these examples while developing:
+
+```bash
+curl "http://localhost:3000/api/steam/account"
+curl "http://localhost:3000/api/steam/account?includeSensitive=true&includeOwnedApps=true"
+```
 
 ## Getting Started
 
