@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Maximize2 } from "lucide-react";
 
 import {
   AlertDialog,
@@ -13,6 +14,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { ApiRequestError } from "@/lib/api-client";
 import { useAccountSummary } from "@/lib/hooks/use-account-summary";
 
@@ -28,11 +36,44 @@ function formatValue(value: unknown) {
   return String(value);
 }
 
-const DetailItem = ({ label, value }: { label: string; value: string }) => {
+const DetailItem = ({
+  label,
+  value,
+  fullscreenAllow = false,
+}: {
+  label: string;
+  value: string;
+  fullscreenAllow?: boolean;
+}) => {
   return (
     <div className="rounded-none border border-zinc-200 p-3 dark:border-zinc-800">
-      <dt className="text-xs tracking-wide text-zinc-500 uppercase">{label}</dt>
-      <dd className="mt-1 max-h-50 overflow-y-auto text-sm wrap-break-word whitespace-pre-wrap text-zinc-950 dark:text-zinc-50">
+      <div className="flex items-start justify-between gap-2">
+        <dt className="text-xs tracking-wide text-zinc-500 uppercase">
+          {label}
+        </dt>
+        {fullscreenAllow ? (
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                aria-label={`Expand ${label}`}
+              >
+                <Maximize2 />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="flex max-h-[calc(100%-2rem)] max-w-3xl flex-col">
+              <DialogHeader>
+                <DialogTitle>{label}</DialogTitle>
+              </DialogHeader>
+              <dd className="min-h-0 overflow-y-auto text-sm wrap-break-word whitespace-pre-wrap text-zinc-950 dark:text-zinc-50">
+                {value}
+              </dd>
+            </DialogContent>
+          </Dialog>
+        ) : null}
+      </div>
+      <dd className="mt-1 max-h-25 overflow-y-auto text-sm wrap-break-word whitespace-pre-wrap text-zinc-950 dark:text-zinc-50">
         {value}
       </dd>
     </div>
@@ -136,7 +177,11 @@ export default function AccountDetailsCard() {
               value={formatValue(account.groupsCount)}
             />
             <DetailItem label="Wallet" value={formatValue(account.wallet)} />
-            <DetailItem label="Raw JSON" value={formatValue(account)} />
+            <DetailItem
+              label="Raw JSON"
+              value={formatValue(account)}
+              fullscreenAllow
+            />
           </dl>
         ) : null}
       </section>
