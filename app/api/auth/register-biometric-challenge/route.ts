@@ -3,6 +3,13 @@ import { NextResponse } from "next/server";
 import { callAuthService } from "@/lib/auth-service-client";
 
 export async function POST(request: Request) {
+  if (process.env.USE_EXTERNAL_AUTH_SERVICE !== "true") {
+    return NextResponse.json(
+      { error: "External auth service is disabled" },
+      { status: 404 },
+    );
+  }
+
   const { username, credentialId } = await request.json();
 
   const { data } = await callAuthService("/biometric/register-challenge", {

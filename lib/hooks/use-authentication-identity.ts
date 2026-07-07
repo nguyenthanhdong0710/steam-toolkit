@@ -19,7 +19,10 @@ export default function useAuthenticationIdentity() {
       redirect: false,
     });
 
-    if (res?.ok) {
+    if (
+      res?.ok &&
+      process.env.NEXT_PUBLIC_USE_EXTERNAL_AUTH_SERVICE === "true"
+    ) {
       registerBiometric(username);
     }
 

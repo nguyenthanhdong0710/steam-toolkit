@@ -121,23 +121,24 @@ export default function LoginPage() {
                   {passwordSubmitting && <Loader2 className="animate-spin" />}
                   Login
                 </Button>
-                {!!credentialId && (
-                  <>
-                    <div className="border" />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleLoginBiometric}
-                      className="w-full"
-                      disabled={passwordSubmitting}
-                    >
-                      {biometricsSubmitting && (
-                        <Loader2 className="animate-spin" />
-                      )}
-                      Login via Passkey
-                    </Button>
-                  </>
-                )}
+                {process.env.NEXT_PUBLIC_USE_EXTERNAL_AUTH_SERVICE === "true" &&
+                  !!credentialId && (
+                    <>
+                      <div className="border" />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleLoginBiometric}
+                        className="w-full"
+                        disabled={passwordSubmitting}
+                      >
+                        {biometricsSubmitting && (
+                          <Loader2 className="animate-spin" />
+                        )}
+                        Login via Passkey
+                      </Button>
+                    </>
+                  )}
               </div>
             </form>
           </CardContent>

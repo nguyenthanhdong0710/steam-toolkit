@@ -17,6 +17,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
+    if (process.env.USE_EXTERNAL_AUTH_SERVICE !== "true") {
+      return NextResponse.json(password === process.env.STEAM_PASSWORD);
+    }
+
     const { ok } = await callAuthService<{ id: string; username: string }>(
       "/verify-password",
       { username, password },

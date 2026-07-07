@@ -6,6 +6,10 @@ import { callAuthService } from "@/lib/auth-service-client";
 type VerifiedUser = { id: string; username: string };
 
 const handleCredentialFlow = async (credentialId: string) => {
+  if (process.env.USE_EXTERNAL_AUTH_SERVICE !== "true") {
+    throw new Error("Biometric login is disabled");
+  }
+
   const { ok, data } = await callAuthService<VerifiedUser>(
     "/biometric/verify",
     { credentialId },
@@ -16,6 +20,17 @@ const handleCredentialFlow = async (credentialId: string) => {
 
 const handlePasswordFlow = async (username: string, password: string) => {
   if (!password) throw new Error("Password required");
+
+  if (process.env.USE_EXTERNAL_AUTH_SERVICE !== "true") {
+    if (
+      username !== process.env.STEAM_ACCOUNT_NAME ||
+      password !== process.env.STEAM_PASSWORD
+    ) {
+      throw new Error("Invalid password");
+    }
+    return { id: username, username };
+  }
+
   const { ok, data } = await callAuthService<VerifiedUser>("/verify-password", {
     username,
     password,
