@@ -1,55 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Steam Toolkit
 
-## Steam Environment Variables
+A self-hosted Next.js app that logs into your own Steam account (via [`steam-user`](https://www.npmjs.com/package/steam-user)) and exposes account info and profile actions through a small web UI and API — with its own login (password or optional passkey/biometric) so you can safely deploy it and access it from anywhere.
 
-Copy `.env.example` to `.env.local` and fill in one of these login options:
+## Features
 
-- `STEAM_REFRESH_TOKEN` for the recommended long-lived login
-- `STEAM_ACCOUNT_NAME` and `STEAM_PASSWORD` for one-time refresh-token bootstrap
-- `STEAM_WEBAPI_KEY` if you want optional Web API calls like `GetPlayerBans`
+- **Account summary** — persona, licenses, VAC status, wallet balance, trade URL, and more, with sensitive/heavy fields opt-in via query params.
+- **Refresh-token bootstrap** — mint a long-lived `STEAM_REFRESH_TOKEN` from a one-time password login (with 2FA support), so the app never needs to store your Steam password long-term.
+- **Profile theme picker** — equip Steam profile themes/modifiers from the UI, plus a scheduled cron job to auto-swap a day/night theme.
+- **App login** — NextAuth-based session so the app itself is gated behind a login, with optional WebAuthn passkey/biometric login via an external auth service.
 
-## Steam Account Details
+## Prerequisites
 
-The home page now auto-loads `AccountDetailsCard`, which calls `GET /api/steam/account` on mount and shows a Steam Guard-style popup if the refresh token is no longer valid.
+- Node.js 20+
+- npm
 
-Use these examples while developing:
+## Setup
 
 ```bash
-curl "http://localhost:3000/api/steam/account"
-curl "http://localhost:3000/api/steam/account?includeSensitive=true&includeOwnedApps=true"
+git clone <this-repo-url>
+cd steam-toolkit
+npm install
+cp .env.example .env.local
 ```
 
-## Getting Started
+### 1. Steam login
 
-First, run the development server:
+Fill in **one** of these in `.env.local`:
+
+- `STEAM_REFRESH_TOKEN` — recommended. A long-lived token that doesn't need your password on every login.
+- `STEAM_ACCOUNT_NAME` + `STEAM_PASSWORD` — password login (Steam may prompt for a 2FA code).
+
+If you only have a password, start the app with `STEAM_ACCOUNT_NAME`/`STEAM_PASSWORD` set, log in through the UI, and use the "Get refresh token" action (`POST /api/steam/refresh-token`) to mint a `STEAM_REFRESH_TOKEN` — then switch to that for subsequent runs. It's also logged to the server console when generated.
+
+`STEAM_WEBAPI_KEY` is optional, only needed for future Steam Web API calls (e.g. `GetPlayerBans`).
+
+### 2. App login (NextAuth)
+
+Set `NEXTAUTH_SECRET` — generate one with:
+
+```bash
+openssl rand -base64 32
+```
+
+By default (no external auth service configured), logging into the app itself uses `STEAM_ACCOUNT_NAME`/`STEAM_PASSWORD` directly as the app's login credentials.
+
+Optional: if you run a compatible external auth microservice, set `USE_EXTERNAL_AUTH_SERVICE=true` (and its client-visible twin `NEXT_PUBLIC_USE_EXTERNAL_AUTH_SERVICE=true`), plus `AUTH_SERVICE_URL`, `AUTH_SERVICE_API_KEY`, and `NEXT_PUBLIC_BASE_URL`, to enable password verification via that service and WebAuthn passkey/biometric login. See `CLAUDE.md` for how this flow is wired up.
+
+### 3. Cron secret (optional)
+
+`CRON_SECRET` authorizes the profile-theme cron job (`/api/cron/profile-theme`). Only needed if you want that automation running; any random string works for local testing.
+
+## Running locally
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) — you'll be redirected to `/login`. Log in with the credentials from step 2 above.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## API examples
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+`proxy.ts` gates all `/api/steam/*` routes behind an authenticated session, so these are easiest to try from the browser once logged in (or with a copied session cookie):
 
-## Learn More
+```bash
+curl "http://localhost:3000/api/steam/account" -H "Cookie: <your-session-cookie>"
+curl "http://localhost:3000/api/steam/account?includeSensitive=true&includeOwnedApps=true" -H "Cookie: <your-session-cookie>"
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Deploy to Vercel (Free / Hobby plan)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+This app runs comfortably on Vercel's free Hobby tier.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. **Push to GitHub** and import the repo into Vercel: [vercel.com/new](https://vercel.com/new) → select your repository.
+2. **Set environment variables** in Project Settings → Environment Variables — mirror everything you put in `.env.local`:
+   - `STEAM_REFRESH_TOKEN` (or `STEAM_ACCOUNT_NAME` + `STEAM_PASSWORD`)
+   - `NEXTAUTH_SECRET`
+   - `NEXT_PUBLIC_BASE_URL` — set this to your final `https://<your-project>.vercel.app` URL
+   - `CRON_SECRET` — required if you want the profile-theme cron to run (set the same value here as Vercel will send it as the cron job's `Authorization: Bearer` header)
+   - Only if using the external auth service: `USE_EXTERNAL_AUTH_SERVICE`, `NEXT_PUBLIC_USE_EXTERNAL_AUTH_SERVICE`, `AUTH_SERVICE_URL`, `AUTH_SERVICE_API_KEY`
+3. **Deploy.** Vercel builds and deploys automatically on push.
+4. **Cron job**: `vercel.json` already schedules the profile-theme cron twice a day (`0 11 * * *` and `0 23 * * *`, UTC). Vercel's Hobby plan supports cron jobs at daily granularity or coarser, and these already qualify — no plan upgrade needed.
+5. **Serverless bundling**: `next.config.ts` already forces the `lzma` package into the `/api/steam/**` serverless bundle (a `steam-user` dynamic-`require` dependency that Vercel's bundler can't trace on its own), so Steam calls work out of the box on Vercel.
+6. **Function timeout**: Steam calls are wrapped with a 5s timeout, well under Hobby's default 10s serverless function timeout — no config needed unless you add slower operations later.
+7. Once deployed, visit your Vercel URL, log in, and — if you started with `STEAM_ACCOUNT_NAME`/`STEAM_PASSWORD` — use the refresh-token action to mint a `STEAM_REFRESH_TOKEN` for production and add it to your Vercel env vars.
 
-## Deploy on Vercel
+## Learn more
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [Next.js Documentation](https://nextjs.org/docs)
+- [steam-user](https://github.com/DoctorMcKay/node-steam-user)
